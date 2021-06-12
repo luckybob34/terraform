@@ -89,22 +89,6 @@ resource "azurerm_app_service" "apps1" {
   }
 
 # - 
-# - Storage Account (only if present)
-# - 
-  dynamic "storage_account" {
-    for_each = lookup(each.value, "storage_accounts", var.null_array)
-    content {
-      name         = lookup(storage_account.value, "name", null)                                #(Required) The name of the storage account identifier.
-      type         = lookup(storage_account.value, "type", null)                                #(Required) The type of storage. Possible values are AzureBlob and AzureFiles.
-      account_name = lookup(storage_account.value, "account_name", null)                        #(Required) The name of the storage account.
-      share_name   = lookup(storage_account.value, "share_name", null)                          #(Required) The name of the file share (container name, for Blob storage).
-      access_key   = lookup(storage_account.value, "access_key", null)                          #(Required) The access key for the storage account.
-      mount_path   = lookup(storage_account.value, "mount_path", null)                          #(Optional) The path to mount the storage within the site's runtime environment.
-
-    }
-  }
-
-# - 
 # - Connection String (only if present)
 # - 
   dynamic "connection_string" {
@@ -119,6 +103,19 @@ resource "azurerm_app_service" "apps1" {
   client_affinity_enabled = lookup(each.value, "client_affinity_enabled", null)                 #(Optional) Should the App Service send session affinity cookies, which route client requests in the same session to the same instance?
   client_cert_enabled     = lookup(each.value, "client_cert_enabled", null)                     #(Optional) Does the App Service require client certificates for incoming requests? Defaults to false.
   enabled                 = lookup(each.value, "enabled", null)                                 #(Optional) Is the App Service Enabled?
+
+# - 
+# - Identity Configuration (only if present - defaults to SystemAssigned)
+# - 
+  dynamic "identity" {
+    for_each = lookup(each.value, "identity", var.null_array)
+    content {
+      type         = lookup(identity.value, "type", null)                                     # (Required) Specifies the identity type of the App Service. Possible values are SystemAssigned (where Azure will generate a Service Principal for you), UserAssigned where you can specify the Service Principal IDs in the identity_ids field, and SystemAssigned, UserAssigned which assigns both a system managed identity as well as the specified user assigned identities. NOTE: When type is set to SystemAssigned, The assigned principal_id and tenant_id can be retrieved after the App Service has been created. More details are available below.
+      identity_ids = lookup(identity.value, "identity_ids", null)                             # (Optional) Specifies a list of user managed identity ids to be assigned. Required if type is UserAssigned.
+
+    }
+  }
+
   https_only              = lookup(each.value, "https_only", null)                              #(Optional) Can the App Service only be accessed via HTTPS? Defaults to false.
 
 # - 
@@ -166,6 +163,22 @@ resource "azurerm_app_service" "apps1" {
   }
 
 # - 
+# - Storage Account (only if present)
+# - 
+  dynamic "storage_account" {
+    for_each = lookup(each.value, "storage_accounts", var.null_array)
+    content {
+      name         = lookup(storage_account.value, "name", null)                                #(Required) The name of the storage account identifier.
+      type         = lookup(storage_account.value, "type", null)                                #(Required) The type of storage. Possible values are AzureBlob and AzureFiles.
+      account_name = lookup(storage_account.value, "account_name", null)                        #(Required) The name of the storage account.
+      share_name   = lookup(storage_account.value, "share_name", null)                          #(Required) The name of the file share (container name, for Blob storage).
+      access_key   = lookup(storage_account.value, "access_key", null)                          #(Required) The access key for the storage account.
+      mount_path   = lookup(storage_account.value, "mount_path", null)                          #(Optional) The path to mount the storage within the site's runtime environment.
+
+    }
+  }
+
+# - 
 # - Site Configuration (only if present)
 # - 
   dynamic "site_config" {
@@ -177,8 +190,22 @@ resource "azurerm_app_service" "apps1" {
       dynamic "ip_restriction" {
         for_each = lookup(site_config.value, "ip_restriction", var.null_array)
         content {
-          ip_address                = lookup(ip_restriction.value, "ip_address", null)                #(Optional) The IP Address used for this IP Restriction.
-          virtual_network_subnet_id = lookup(ip_restriction.value, "virtual_network_subnet_id", null) #(Optional.The Virtual Network Subnet ID used for this IP Restriction.
+          ip_address = lookup(ip_restriction.value, "ip_address", null)                  #(Optional) The IP Address used for this IP Restriction in CIDR notation.
+          service_tag = lookup(ip_restriction.value, "service_tag", null)                #(Optional) The Service Tag used for this IP Restriction.
+          virtual_network_subnet_id = lookup(ip_restriction.value, "virtual_network_subnet_id", null)    #(Optional) The Virtual Network Subnet ID used for this IP Restriction.
+          name = lookup(ip_restriction.value, "name", null)                              #(Optional) The name for this IP Restriction.
+          priority = lookup(ip_restriction.value, "priority", null)                      #(Optional) The priority for this IP Restriction. Restrictions are enforced in priority order. By default, priority is set to 65000 if not specified.
+          action = lookup(ip_restriction.value, "action", null)                          #(Optional) Does this restriction Allow or Deny access for this IP range. Defaults to Allow.
+          
+          dynamic "headers" {                                                                 #(Optional) The headers for this specific ip_restriction as defined below.
+            for_each = lookup(site_config.value, "headers", var.null_array)
+            content {   
+              x_azure_fdid      = lookup(headers.value, "x_azure_fdid", null)                 #(Optional) A list of allowed Azure FrontDoor IDs in UUID notation with a maximum of 8.
+              x_fd_health_probe = lookup(headers.value, "x_fd_health_probe", null)            #(Optional) A list to allow the Azure FrontDoor health probe header. Only allowed value is "1".
+              x_forwarded_for   = lookup(headers.value, "x_forwarded_for", null)              #(Optional) A list of allowed 'X-Forwarded-For' IPs in CIDR notation with a maximum of 8
+              x_forwarded_host  = lookup(headers.value, "x_forwarded_host", null)             #(Optional) A list of allowed 'X-Forwarded-Host' domains with a maximum of 8.              
+            }   
+          }
         }
       }
 
@@ -193,7 +220,33 @@ resource "azurerm_app_service" "apps1" {
       default_documents        = lookup(site_config.value, "default_documents", null)        #(Optional) The ordering of default documents to load, if an address isn't specified.
       dotnet_framework_version = lookup(site_config.value, "dotnet_framework_version", null) #(Optional) The version of the .net framework's CLR used in this App Service. Possible values are v2.0 (which will use the latest version of the .net framework for the .net CLR v2 = lookup(site_config.value, "", null) #currently .net 3.5) and v4.0 (which corresponds to the latest version of the .net CLR v4 = lookup(site_config.value, "", null) #which at the time of writing is .net 4.7.1). For more information on which .net CLR version to use based on the .net framework you're targeting = lookup(site_config.value, "", null) #please see this table. Defaults to v4.0.
       ftps_state               = lookup(site_config.value, "ftps_state", null)               #(Optional) State of FTP / FTPS service for this App Service. Possible values include: AllAllowed, FtpsOnly and Disabled.
+      health_check_path        = lookup(site_config.value, "health_check_path", null)        #(Optional) The health check path to be pinged by App Service.
+      number_of_workers        = lookup(site_config.value, "number_of_workers", null)        #(Optional) The scaled number of workers (for per site scaling) of this App Service. Requires that per_site_scaling is enabled on the azurerm_app_service_plan.
       http2_enabled            = lookup(site_config.value, "http2_enabled", null)            #(Optional) Is HTTP2 Enabled on this App Service? Defaults to false.
+
+      scm_use_main_ip_restriction = lookup(site_config.value, "scm_use_main_ip_restriction", null) #(Optional) IP security restrictions for scm to use main. Defaults to false.
+
+      dynamic "scm_ip_restriction" {                                                          #(Optional) A List of objects representing ip restrictions as defined below.
+        for_each = lookup(site_config.value, "scm_ip_restriction", var.null_array)
+        content {
+          ip_address = lookup(scm_ip_restrictions.value, "ip_address", null)                  #(Optional) The IP Address used for this IP Restriction in CIDR notation.
+          service_tag = lookup(scm_ip_restrictions.value, "service_tag", null)                #(Optional) The Service Tag used for this IP Restriction.
+          virtual_network_subnet_id = lookup(scm_ip_restrictions.value, "virtual_network_subnet_id", null)    #(Optional) The Virtual Network Subnet ID used for this IP Restriction.
+          name = lookup(scm_ip_restrictions.value, "name", null)                              #(Optional) The name for this IP Restriction.
+          priority = lookup(scm_ip_restrictions.value, "priority", null)                      #(Optional) The priority for this IP Restriction. Restrictions are enforced in priority order. By default, priority is set to 65000 if not specified.
+          action = lookup(scm_ip_restrictions.value, "action", null)                          #(Optional) Does this restriction Allow or Deny access for this IP range. Defaults to Allow.
+          
+          dynamic "headers" {                                                                 #(Optional) The headers for this specific ip_restriction as defined below.
+            for_each = lookup(site_config.value, "headers", var.null_array)
+            content {   
+              x_azure_fdid      = lookup(headers.value, "x_azure_fdid", null)                 #(Optional) A list of allowed Azure FrontDoor IDs in UUID notation with a maximum of 8.
+              x_fd_health_probe = lookup(headers.value, "x_fd_health_probe", null)            #(Optional) A list to allow the Azure FrontDoor health probe header. Only allowed value is "1".
+              x_forwarded_for   = lookup(headers.value, "x_forwarded_for", null)              #(Optional) A list of allowed 'X-Forwarded-For' IPs in CIDR notation with a maximum of 8
+              x_forwarded_host  = lookup(headers.value, "x_forwarded_host", null)             #(Optional) A list of allowed 'X-Forwarded-Host' domains with a maximum of 8.              
+            }   
+          }
+        }        
+      }
 
       #(Optional) A List of objects representing ip restrictions as defined below.
       java_version              = lookup(site_config.value, "java_version", null)                                                                                                                                                                                                                                                                                                      #(Optional) The version of Java to use. If specified java_container and java_container_version must also be specified. Possible values are 1.7, 1.8 and 11.
@@ -214,15 +267,17 @@ resource "azurerm_app_service" "apps1" {
     }
   }
 
-# - 
-# - Identity Configuration (only if present - defaults to SystemAssigned)
-# - 
-  dynamic "identity" {
-    for_each = lookup(each.value, "identity", var.null_array)
+# -
+# - Source Control
+# -
+  dynamic "source_control" {
+    for_each = lookup(each.value, "source_control", var.null_array)
     content {
-      type         = lookup(identity.value, "type", null)                                     # (Required) Specifies the identity type of the App Service. Possible values are SystemAssigned (where Azure will generate a Service Principal for you), UserAssigned where you can specify the Service Principal IDs in the identity_ids field, and SystemAssigned, UserAssigned which assigns both a system managed identity as well as the specified user assigned identities. NOTE: When type is set to SystemAssigned, The assigned principal_id and tenant_id can be retrieved after the App Service has been created. More details are available below.
-      identity_ids = lookup(identity.value, "identity_ids", null)                             # (Optional) Specifies a list of user managed identity ids to be assigned. Required if type is UserAssigned.
-
+      repo_url           = lookup(source_control.value, "repo_url", null)           #(Required) The URL of the source code repository.
+      branch             = lookup(source_control.value, "branch", null)             #(Optional) The branch of the remote repository to use. Defaults to 'master'.
+      manual_integration = lookup(source_control.value, "manual_integration", null) #(Optional) Limits to manual integration. Defaults to false if not specified.
+      rollback_enabled   = lookup(source_control.value, "rollback_enabled", null)   #(Optional) Enable roll-back for the repository. Defaults to false if not specified.
+      use_mercurial      = lookup(source_control.value, "use_mercurial", null)      #(Optional) Use Mercurial if true, otherwise uses Git.    
     }
   }
 
