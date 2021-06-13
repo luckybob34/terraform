@@ -44,7 +44,7 @@ resource "azurerm_virtual_network" "vnet1" {
       security_group = lookup(subnet.value, "security_group", null)                                                          #(Optional) The Network Security Group to associate with the subnet. (Referenced by id, ie. azurerm_network_security_group.example.id)
   }
 
-  tags = data.azurerm_resource_group.rg.tags
+  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", null))
 }
 
 # -
@@ -64,7 +64,8 @@ resource "azurerm_public_ip" "pip1" {
   reverse_fqdn            = lookup(each.value, "reverse_fqdn", null)                                   #(Optional) A fully qualified domain name that resolves to this public IP address. If the reverseFqdn is specified, then a PTR DNS record is created pointing from the IP address in the in-addr.arpa domain to the reverse FQDN.
   public_ip_prefix_id     = lookup(each.value, "public_ip_prefix_id", null)                            #(Optional) If specified then public IP address allocated will be provided from the public IP prefix resource.
   ip_tags                 = lookup(each.value, "ip_tags", null)                                        #(Optional) A mapping of IP tags to assign to the public IP.
-  tags                    = data.azurerm_resource_group.rg.tags
+  
+  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", null))
 }
 
 
@@ -401,5 +402,5 @@ firewall_policy_id = lookup(each.value, "firewall_policy_id", null)             
     }
   }
 
-  tags = data.azurerm_resource_group.rg.tags
+  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", null))
 }

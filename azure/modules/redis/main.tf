@@ -55,5 +55,5 @@ resource "azurerm_redis_cache" "redis1" {
   subnet_id                     = lookup(each.value, "subnet_id", null)                                      #(Optional) Only available when using the Premium SKU The ID of the Subnet within which the Redis Cache should be deployed. This Subnet must only contain Azure Cache for Redis instances without any other type of resources. Changing this forces a new resource to be created.
   zones                         = lookup(each.value, "zones", null)                                          #(Optional) A list of a one or more Availability Zones, where the Redis Cache should be allocated.
 
-  tags = data.azurerm_resource_group.rg.tags
+  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", null))
 }  
