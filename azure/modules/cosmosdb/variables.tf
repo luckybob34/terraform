@@ -28,6 +28,11 @@ variable "cosmosdb_sql_databases" {
   type        = any
 }
 
+variable "cosmosdb_sql_containers" {
+  description = "The CosmosDB SQL Containers with their properties."
+  type        = any
+}
+
 # -
 # - Other
 # -
