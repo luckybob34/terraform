@@ -29,6 +29,17 @@ variable "app_services" {
   type        = any
 }
 
+variable "site_extensions" {
+  description = "Site Extensions for the App Services with their properties"
+  type        = any
+}
+
+variable "monitor_autoscale_settings" {
+  description = "The Autoscale settings for the App Service Plans and App Services with thier properties"
+  type        = any
+}
+
+
 # -
 # - Other
 # -

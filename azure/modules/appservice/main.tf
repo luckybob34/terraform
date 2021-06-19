@@ -284,17 +284,125 @@ resource "azurerm_app_service" "apps1" {
   tags = data.azurerm_resource_group.rg.tags
 }
 
-# resource "azurerm_template_deployment" "temp1" {
-#   for_each              = var.site_extensions
-#   name                  = "as-se-${each.value["name"]}-${var.environment}"
-#   resource_group_name   = data.azurerm_resource_group.rg.name
-#   template_body         = ${file("arm/siteextensions.json")}
 
-#   parameters {
-#     "siteName"          = "${azurerm_app_service.main.name}"
-#     "extensionName"     = "AspNetCoreRuntime.2.2.x64"
-#     "extensionVersion"  = "2.2.0-preview3-35497"
-#   }
+resource "azurerm_monitor_autoscale_setting" "mas1" {
+  depends_on          = [azurerm_app_service_plan.asp1]
+  for_each            = var.monitor_autoscale_settings
+  name                = "mas-${each.value["name"]}-${each.value["priority"]}-${var.environment}"
+  resource_group_name = data.azurerm_resource_group.rg.name
+  location            = var.app_service_location
 
-#   deployment_mode     = "Incremental"
-#fs}
+  #(Required) Specifies the resource ID of the resource that the autoscale setting should be added to.
+  target_resource_id  = lookup(azurerm_app_service_plan.asp1, each.value["app_service_plan_key"])["id"]
+  enabled             = lookup(each.value, "enabled", null)                         #(Optional) Specifies whether automatic scaling is enabled for the target resource. Defaults to true.
+
+  dynamic "profile" {                                                               #(Required) Specifies one or more (up to 20) profile blocks as defined below.
+    for_each = lookup(each.value, "profile", [])
+    content {
+      name = profile.value["name"]                                                  #(Required) Specifies the name of the profile.
+
+      capacity {                                                                    #(Required) A capacity block as defined below.
+        default = profile.value["default"]                                          #(Required) The number of instances that are available for scaling if metrics are not available for evaluation. The default is only used if the current instance count is lower than the default. Valid values are between 0 and 1000.
+        maximum = profile.value["maximum"]                                          #(Required) The maximum number of instances for this resource. Valid values are between 0 and 1000.      
+        minimum = profile.value["minimum"]                                          #(Required) The minimum number of instances for this resource. Valid values are between 0 and 1000.
+      }
+      
+      dynamic "rule" {                                                              #(Optional) One or more (up to 10) rule blocks as defined below.
+        for_each = lookup(profile.value, "rule", var.null_array)
+        content {
+          dynamic "metric_trigger" {                                                #(Required) A metric_trigger block as defined below.
+            for_each = lookup(rule.value, "metric_trigger", null)
+            content {
+              metric_name        = metric_trigger.value["metric_name"]              #(Required) The name of the metric that defines what the rule monitors, such as Percentage CPU for Virtual Machine Scale Sets and CpuPercentage for App Service Plan.
+              metric_resource_id = metric_trigger.value["metric_resource_id"]       #(Required) The ID of the Resource which the Rule monitors.
+              operator           = metric_trigger.value["operator"]                 #(Required) Specifies the operator used to compare the metric data and threshold. Possible values are: Equals, NotEquals, GreaterThan, GreaterThanOrEqual, LessThan, LessThanOrEqual.
+              statistic          = metric_trigger.value["statistic"]                #(Required) Specifies how the metrics from multiple instances are combined. Possible values are Average, Min and Max.
+              time_aggregation   = metric_trigger.value["time_aggregation"]         #(Required) Specifies how the data that's collected should be combined over time. Possible values include Average, Count, Maximum, Minimum, Last and Total. Defaults to Average.
+              time_grain         = metric_trigger.value["time_grain"]               #(Required) Specifies the granularity of metrics that the rule monitors, which must be one of the pre-defined values returned from the metric definitions for the metric. This value must be between 1 minute and 12 hours an be formatted as an ISO 8601 string.
+              time_window        = metric_trigger.value["time_window"]              #(Required) Specifies the time range for which data is collected, which must be greater than the delay in metric collection (which varies from resource to resource). This value must be between 5 minutes and 12 hours and be formatted as an ISO 8601 string.
+              threshold          = metric_trigger.value["threshold"]                #(Required) Specifies the threshold of the metric that triggers the scale action.
+              metric_namespace   = lookup(metric_trigger, "metric_namespace", null) #(Optional) The namespace of the metric that defines what the rule monitors, such as microsoft.compute/virtualmachinescalesets for Virtual Machine Scale Sets.
+              
+              dynamic "dimensions" {                                                #(Optional) One or more dimensions block as defined below.
+                for_each = lookup(metric_trigger.value, "dimensions", var.null_array)
+                content {
+                  name     = dimensions.value["name"]                               #(Required) The name of the dimension.
+                  operator = dimensions.value["operator"]                           #(Required) The dimension operator. Possible values are Equals and NotEquals. Equals means being equal to any of the values. NotEquals means being not equal to any of the values.
+                  values   = dimensions.value["values"]                             #(Required) A list of dimension values.
+                }
+              }
+            }
+          }
+          dynamic "scale_action" {                                                  #(Required) A scale_action block as defined below.
+            for_each = lookup(rule.value, "scale_action", [])
+            content {
+              cooldown  = scale_action.value["cooldown"]                            #(Required) The amount of time to wait since the last scaling action before this action occurs. Must be between 1 minute and 1 week and formatted as a ISO 8601 string.
+              direction = scale_action.value["direction"]                           #(Required) The scale direction. Possible values are Increase and Decrease.
+              type      = scale_action.value["type"]                                #(Required) The type of action that should occur. Possible values are ChangeCount, ExactCount and PercentChangeCount.
+              value     = scale_action.value["value"]                               #(Required) The number of instances involved in the scaling action. Defaults to 1.              
+            }
+          }                    
+        }
+      }
+
+      dynamic "fixed_date" {                                                        #(Optional) A fixed_date block as defined below. This cannot be specified if a recurrence block is specified.
+        for_each = lookup(profile.value, "fixed_date", var.null_array)
+        content {
+          end      = fixed_date.value[""]                                           #(Required) Specifies the end date for the profile, formatted as an RFC3339 date string.
+          start    = fixed_date.value[""]                                           #(Required) Specifies the start date for the profile, formatted as an RFC3339 date string.
+          timezone = lookup(fixed_date.value, "timezone", null)                     #(Optional) The Time Zone of the start and end times. A list of possible values can be found here. Defaults to UTC.          
+        }
+      }
+      
+      dynamic "recurrence" {                                                        #(Optional) A recurrence block as defined below. This cannot be specified if a fixed_date block is specified.      
+        for_each = lookup(profile.value, "recurrence", var.null_array)
+        content {
+          timezone = recurrence.value["timezone"]                                   #(Required) The Time Zone used for the hours field. A list of possible values can be found here. Defaults to UTC.
+          days     = recurrence.value["days"]                                       #(Required) A list of days that this profile takes effect on. Possible values include Monday, Tuesday, Wednesday, Thursday, Friday, Saturday and Sunday.
+          hours    = recurrence.value["hours"]                                      #(Required) A list containing a single item, which specifies the Hour interval at which this recurrence should be triggered (in 24-hour time). Possible values are from 0 to 23.
+          minutes  = recurrence.value["minutes"]                                    #(Required) A list containing a single item which specifies the Minute interval at which this recurrence should be triggered.          
+        }
+      }
+    }
+  }
+  
+  dynamic "notification" {                                                          #(Optional) Specifies a notification block as defined below.
+    for_each = lookup(each.value, "notification", var.null_array)
+    content {
+      dynamic "email" {                                                             #(Required) A email block as defined below.
+        for_each = lookup(notification.value, "email", [])
+        content {
+          send_to_subscription_administrator    = lookup(email.value, "send_to_subscription_administrator", null)     #(Optional) Should email notifications be sent to the subscription administrator? Defaults to false.
+          send_to_subscription_co_administrator = lookup(email.value, "send_to_subscription_co_administrator", null)  #(Optional) Should email notifications be sent to the subscription co-administrator? Defaults to false.
+          custom_emails                         = lookup(email.value, "custom_emails", null)                          #(Optional) Specifies a list of custom email addresses to which the email notifications will be sent.
+        }
+      }
+      dynamic "webhook" {                                                           #(Optional) One or more webhook blocks as defined below.      
+        for_each = lookup(notification.value, "webhook", [])
+        content {
+          service_uri = webhook.value["service_url"]                                #(Required) The HTTPS URI which should receive scale notifications.
+          properties  = lookup(webhook.value, "properties", null)                   #(Optional) A map of settings.
+        }
+      }
+    }
+  }
+
+  tags = data.azurerm_resource_group.rg.tags
+
+}
+
+resource "azurerm_template_deployment" "temp1" {
+  depends_on            = [azurerm_app_service.apps1]
+  for_each              = var.site_extensions
+  name                  = "as-se-${each.value["name"]}-${var.environment}"
+  resource_group_name   = data.azurerm_resource_group.rg.name
+  template_body         = file("./modules/appservice/arm/siteextensions.json")
+
+  parameters = {
+    "siteName"          = lookup(azurerm_app_service.apps1, each.value["app_service_key"])["name"]
+    "extensionName"     = each.value["extensionName"]
+    "extensionVersion"  = each.value["extensionVersion"]
+  }
+
+  deployment_mode       = "Incremental"
+}
