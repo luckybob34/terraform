@@ -290,7 +290,7 @@ resource "azurerm_monitor_autoscale_setting" "mas1" {
   for_each            = var.monitor_autoscale_settings
   name                = "${var.environment}-${each.value["team"]}-${each.value["name"]}-${each.value["instance"]}-mas"
   resource_group_name = data.azurerm_resource_group.rg.name
-  location            = var.app_service_location
+  location            = each.value["location"]
 
   #(Required) Specifies the resource ID of the resource that the autoscale setting should be added to.
   target_resource_id  = lookup(azurerm_app_service_plan.asp1, each.value["app_service_plan_key"])["id"]
