@@ -38,12 +38,30 @@ variable "network_security_groups" {
   type        = any
 }
 
+variable "route_tables" {
+  description = "Route Tables to create with their configurations"
+  type        = any
+}
+
 variable "virtual_networks" {
   description = "Virtual Networks to create with their configurations"
   type = any
 }
 
+variable "subnets" {
+  description = "Subnets to create with their configurations"
+  type        = any
+}
 
+variable "route_table_association" {
+  description = "Route Table Association to Subnet"
+  type        = any
+}
+
+variable "network_security_group_association" {
+  description = "Network Security Group to Subnet"
+  type        = any
+}
 
 # -
 # - Other
