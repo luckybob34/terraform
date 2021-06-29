@@ -46,6 +46,7 @@ monitor_autoscale_settings = {
     team                         = "app"               #(Mandatory)    
     name                         = "asptest-autoscale" #(Mandatory)
     instance                     = "01"                #(Mandatory)
+    location                     = "East US 2"
     app_service_plan_key         = "primary_asp"       #(Mandatory)
 
     enabled                      = true                #(Optional) Specifies whether automatic scaling is enabled for the target resource. Defaults to true.
@@ -63,7 +64,8 @@ monitor_autoscale_settings = {
     team                         = "app"               #(Mandatory)    
     name                         = "asptest-autoscale" #(Mandatory)
     instance                     = "01"                #(Mandatory)
-    app_service_plan_key         = "primary_asp"       #(Mandatory)
+    location                     = "Central US"
+    app_service_plan_key         = "secondary_asp"     #(Mandatory)
 
     enabled                      = true                #(Optional) Specifies whether automatic scaling is enabled for the target resource. Defaults to true.
     profile = [                                        #(Required) Specifies one or more (up to 20) profile blocks as defined below.
@@ -82,9 +84,9 @@ monitor_autoscale_settings = {
 app_services = {
   primary_as = {
     team                         = "app"               #(Mandatory)    
-    name                         = "testing_as"        #(Mandatory) Core name of the App Service
+    name                         = "testing-as"        #(Mandatory) Core name of the App Service
     instance                     = "01"                #(Mandatory) Priority postfix for App Service name
-    location                     = "US East 2"         #(Required) Location of App Service
+    location                     = "East US 2"         #(Required) Location of App Service
     app_service_plan_key         = "primary_asp"       #(Required) The Key from azurerm_app_service_plan map the  of the App Service Plan within which to create this App Service.
     https_only                   = true                #(Optional) Can the App Service only be accessed via HTTPS? Defaults to false.
     # - App Settings
@@ -118,7 +120,7 @@ app_services = {
   } 
   secondary_as = {
     team                         = "app"               #(Mandatory)    
-    name                         = "testing_as"        #(Mandatory) Core name of the App Service
+    name                         = "testing-as"        #(Mandatory) Core name of the App Service
     instance                     = "02"                #(Mandatory) Priority postfix for App Service name
     location                     = "Central US"        #(Required) Location of App Service    
     app_service_plan_key         = "secondary_asp"     #(Required) The Key from azurerm_app_service_plan map the  of the App Service Plan within which to create this App Service.
@@ -153,6 +155,9 @@ app_services = {
     ]
   }   
 }
+
+# - App Service Site Extensions
+site_extensions = {}
 
 # -
 # - Traffic Manager Profile & Trafic Manager Endpoints
@@ -190,7 +195,7 @@ traffic_manager_endpoints = {
     instance                    = "02"                   #(Required) The priority name of the Traffic Manager endpoint. Changing this forces a new resource to be created.
     traffic_manager_profile_key = "testapp"              #(Required) The name of the Traffic Manager Profile to attach create the Traffic Manager endpoint.
     type                        = "azureEndpoints"       #(Required) The Endpoint type, must be one of: azureEndpoints, externalEndpoints, nestedEndpoints
-    weight                      = 100                    #(Optional) Specifies how much traffic should be distributed to this endpoint, this must be specified for Profiles using the Weighted traffic routing method. Supports values between 1 and 1000.
+    weight                      = 50                     #(Optional) Specifies how much traffic should be distributed to this endpoint, this must be specified for Profiles using the Weighted traffic routing method. Supports values between 1 and 1000.
     app_service_key             = "secondary_as"         #(Optional) The resource id of an Azure resource to target. This argument must be provided for an endpoint of type azureEndpoints or nestedEndpoints.  
   }
 }

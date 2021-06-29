@@ -1,5 +1,5 @@
 terraform {
-  backend "azurerm" {}
+  backend "local" {}
   required_providers {
     azurerm = {
       source  = "azurerm"
@@ -37,7 +37,7 @@ resource "azurerm_resource_group" "rg" {
 # -
 module "app_services" {
   depends_on                 = [azurerm_resource_group.rg]
-  source                     = "github.com/luckybob34/terraform/tree/main/azure/modules/appservice"
+  source                     = "git::github.com/luckybob34/terraform.git//azure/modules/appservice"
   app_service_rg             = var.resource_group_name
   environment                = var.environment
   app_service_plans          = var.app_service_plans
@@ -51,7 +51,7 @@ module "app_services" {
 # -
 module "traffic_manager" {
   depends_on                = [azurerm_resource_group.rg, module.app_services]
-  source                    = "./modules/trafficmanager"
+  source                    = "git::github.com/luckybob34/terraform.git//azure/modules/trafficmanager"
   traffic_manager_rg        = var.resource_group_name
   environment               = var.environment
   traffic_manager_profiles  = var.traffic_manager_profiles
