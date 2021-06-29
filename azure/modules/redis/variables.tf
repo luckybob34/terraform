@@ -24,6 +24,11 @@ variable "redis_cache" {
   type        = any
 }
 
+variable "redis_cache_firewall_rules" {
+  description = "The Redis Cache Firewall Rules with thier properties"
+  type        = any
+}
+
 # -
 # - Other
 # -

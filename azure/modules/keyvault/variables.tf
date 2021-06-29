@@ -25,6 +25,25 @@ variable "key_vaults" {
 }
 
 # -
+# - Logging resources
+# -
+variable "storage_account" {
+  description = "The Storage Account for Key Vault Logging"
+  type        = any
+}
+
+variable "log_analytics_workspace" {
+  description = "The Log Analytic Workspace for the Key Vault"
+  type        = any
+}
+
+variable "monitoring_diagnostic_settings" {
+  description = "The Monitoring Diagnostic Setting"
+  type        = any
+}
+
+
+# -
 # - Other
 # -
 variable "null_array" {

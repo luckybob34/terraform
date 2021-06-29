@@ -55,5 +55,14 @@ resource "azurerm_redis_cache" "redis1" {
   subnet_id                     = lookup(each.value, "subnet_id", null)                                      #(Optional) Only available when using the Premium SKU The ID of the Subnet within which the Redis Cache should be deployed. This Subnet must only contain Azure Cache for Redis instances without any other type of resources. Changing this forces a new resource to be created.
   zones                         = lookup(each.value, "zones", null)                                          #(Optional) A list of a one or more Availability Zones, where the Redis Cache should be allocated.
 
-  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", null))
+  tags = data.azurerm_resource_group.rg.tags
 }  
+
+resource "azurerm_redis_firewall_rule" "redisfw1" {
+  for_each            = var.redis_cache_firewall_rules
+  name                = "redisrule${each.value["name"]}${var.environment}"                                  #(Required) The name of the Firewall Rule. Changing this forces a new resource to be created.
+  resource_group_name = data.azurerm_resource_group.rg.name                                                 #(Required) The name of the resource group in which this Redis Cache exists.
+  redis_cache_name    = lookup(azurerm_redis_cache.redis1, each.value["redis_cache_key"])["name"]           #(Required) The name of the Redis Cache. Changing this forces a new resource to be created.
+  start_ip            = each.value["start_ip"]                                                              #(Required) The lowest IP address included in the range
+  end_ip              = each.value["end_ip"]                                                                #(Required) The highest IP address included in the range.
+} 
