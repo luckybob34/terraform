@@ -36,13 +36,17 @@ resource "azurerm_resource_group" "rg" {
 # - Virtual Networks
 # -
 module "virtual_networks" {
-  depends_on                       = [azurerm_resource_group.rg]
-  source                           = "git::github.com/luckybob34/terraform.git//azure/modules/virtualnetwork"
-  network_rg                       = var.resource_group_name
-  environment                      = var.environment  
-  existing_ddos_protection_plans   = {}
-  existing_network_security_groups = {}
-  ddos_protection_plans            = var.ddos_protection_plans
-  network_security_groups          = var.network_security_groups
-  virtual_networks                 = var.virtual_networks
+  depends_on                         = [azurerm_resource_group.rg]
+  source                             = "git::github.com/luckybob34/terraform.git//azure/modules/virtualnetwork"
+  network_rg                         = var.resource_group_name
+  environment                        = var.environment  
+  existing_ddos_protection_plans     = {}
+  existing_network_security_groups   = {}
+  ddos_protection_plans              = var.ddos_protection_plans
+  network_security_groups            = var.network_security_groups
+  route_tables                       = var.route_tables
+  virtual_networks                   = var.virtual_networks
+  subnets                            = var.subnets
+  route_table_association            = var.route_table_association
+  network_security_group_association = var.network_security_group_association
 }
