@@ -2,7 +2,7 @@
 # - Core object
 # -
 
-variable "networking_rg" {
+variable "network_rg" {
   description = "The Virtual Network resources group name."
   type        = string
 }
