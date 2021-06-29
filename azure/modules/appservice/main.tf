@@ -13,7 +13,7 @@ resource "azurerm_app_service_plan" "asp1" {
   for_each                     = var.app_service_plans
   name                         = "asp-${each.value["name"]}-${each.value["priority"]}-${var.environment}"
   resource_group_name          = data.azurerm_resource_group.rg.name
-  location                     = var.app_service_location
+  location                     = each.value["location"]
   kind                         = lookup(each.value, "kind", null)                               #(Optional) The kind of the App Service Plan to create. Possible values are Windows (also available as App), Linux, elastic (for Premium Consumption) and FunctionApp (for a Consumption Plan). Defaults to Windows. Changing this forces a new resource to be created.
   maximum_elastic_worker_count = lookup(each.value, "maximum_elastic_worker_count", null)       #The maximum number of total workers allowed for this ElasticScaleEnabled App Service Plan.
 
@@ -42,7 +42,7 @@ resource "azurerm_app_service" "apps1" {
   for_each            = var.app_services
   name                = "as-${each.value["name"]}-${each.value["priority"]}-${var.environment}"         #(Required) Specifies the name of the App Service. Changing this forces a new resource to be created.
   resource_group_name = data.azurerm_resource_group.rg.name                                             #(Required) The name of the resource group in which to create the App Service.
-  location            = var.app_service_location                                                        #(Required) Specifies the supported Azure location where the resource exists. Changing this forces a new resource to be created.
+  location            = each.value["location"]                                                          #(Required) Specifies the supported Azure location where the resource exists. Changing this forces a new resource to be created.
   app_service_plan_id = lookup(azurerm_app_service_plan.asp1, each.value["app_service_plan_key"])["id"] #(Required) The ID of the App Service Plan within which to create this App Service.
   app_settings        = lookup(each.value, "app_settings", null)                                        #(Optional) A key-value pair of App Settings.
   
