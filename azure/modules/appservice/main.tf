@@ -397,7 +397,7 @@ resource "azurerm_template_deployment" "temp1" {
   name                  = "as-se-${each.value["name"]}-${var.environment}"
   resource_group_name   = data.azurerm_resource_group.rg.name
   # template_body         = file("./modules/appservice/arm/siteextensions.json")
-  template_body         = file("git::github.com/luckybob34/terraform.git//azure/modules/appservice/arm/siteextensions.json")
+  template_body         = file("${path.module}/arm/siteextensions.json")
 
   parameters = {
     "siteName"          = lookup(azurerm_app_service.apps1, each.value["app_service_key"])["name"]
