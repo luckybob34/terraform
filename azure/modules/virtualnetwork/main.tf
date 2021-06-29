@@ -34,6 +34,102 @@ resource "azurerm_network_ddos_protection_plan" "dpp1" {
 }
 
 # -
+# - Virtual Network
+# -
+resource "azurerm_virtual_network" "vnet1" {
+  depends_on          =[azurerm_network_ddos_protection_plan.dpp1]
+  for_each            = var.virtual_networks
+  name                = "vnet-${each.value["name"]}-${var.environment}"                                                     #(Required) The name of the virtual network. Changing this forces a new resource to be created.
+  location            = lookup(each.value, "location", null) == null ? data.azurerm_resource_group.rg.location : each.value["location"]
+  resource_group_name = data.azurerm_resource_group.rg.name
+  
+  address_space       = each.value["address_space"]                                                                         #(Required) The address space that is used the virtual network. You can supply more than one address space.
+  bgp_community       = lookup(each.value, "bgp_community", null)                                                           #(Optional) The BGP community attribute in format <as-number>:<community-value>.
+  
+  dynamic "ddos_protection_plan" {                                                                                           #(Optional) A ddos_protection_plan block as documented below.
+    for_each = lookup(each.value, "ddos_protection_plan", var.null_array)
+    content {
+      id     = lookup(merge(data.azurerm_ddos_prtection_plan.dpp1,azurerm_ddos_prtection_plan.dpp1), ddos_protection_plan.value["ddos_protection_plan_key"])["id"] #(Required) The ID of DDoS Protection Plan.
+      enable = ddos_protection_plan.value["enable"]                                                                          #(Required) Enable/disable DDoS Protection Plan on Virtual Network.      
+    }
+  }
+  
+  dns_servers          = lookup(each.value, "dns_servers", null)                                                             #(Optional) List of IP addresses of DNS servers
+
+  # dynamic "subnet" {                                                                                                         #(Optional) Can be specified multiple times to define multiple subnets. Each subnet block supports fields documented below.
+  #   for_each = lookup(each.value, "subnet", var.null_array)
+  #   content {
+  #     name           = subnet.value["name"]                                                                                  #(Required) The name of the subnet.
+  #     address_prefix = subnet.value["address_prefix"]                                                                        #(Required) The address prefix to use for the subnet.
+  #     security_group = lookup(subnet.value, "nsg_key", null) != null ? lookup(merge(data.azurerm_network_security_group.nsg1, azurerm_network_security_group.nsg1), subnet.value["nsg_key"])["id"] : null                                                         #(Optional) The Network Security Group to associate with the subnet. (Referenced by id, ie. azurerm_network_security_group.example.id)
+  #   }
+  # }
+
+  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", []))
+}
+
+# - 
+# - Subnets
+# - 
+
+resource "azurerm_subnet" "sub1" {
+  depends_on           = [azurerm_virtual_network.vnet1]
+  for_each             = var.subnets
+  name                 = each.value["name"]
+  resource_group_name  = data.azurerm_resource_group.rg.name
+  virtual_network_name = lookup(azurerm_virtual_network.vnet1, each.value["vnet_key"])["name"]     #(Required) The name of the virtual network to which to attach the subnet. Changing this forces a new resource to be created.
+  
+  address_prefixes     = lookup(each.value, "address_prefixes", null)                              #(Optional) The address prefixes to use for the subnet.
+  #address_prefix       = lookup(each.value, "address_prefix", null)
+
+  dynamic "delegation" {                                                                           #(Optional) One or more delegation blocks as defined below.  
+    for_each = lookup(each.value, "delegation", [])
+    content {
+      name         = delegation.value["name"]                                                      #(Required) The name of service to delegate to. Possible values include Microsoft.ApiManagement/service, Microsoft.AzureCosmosDB/clusters, Microsoft.BareMetal/AzureVMware, Microsoft.BareMetal/CrayServers, Microsoft.Batch/batchAccounts, Microsoft.ContainerInstance/containerGroups, Microsoft.Databricks/workspaces, Microsoft.DBforMySQL/flexibleServers, Microsoft.DBforMySQL/serversv2, Microsoft.DBforPostgreSQL/flexibleServers, Microsoft.DBforPostgreSQL/serversv2, Microsoft.DBforPostgreSQL/singleServers, Microsoft.HardwareSecurityModules/dedicatedHSMs, Microsoft.Kusto/clusters, Microsoft.Logic/integrationServiceEnvironments, Microsoft.MachineLearningServices/workspaces, Microsoft.Netapp/volumes, Microsoft.Network/managedResolvers, Microsoft.PowerPlatform/vnetaccesslinks, Microsoft.ServiceFabricMesh/networks, Microsoft.Sql/managedInstances, Microsoft.Sql/servers, Microsoft.StreamAnalytics/streamingJobs, Microsoft.Synapse/workspaces, Microsoft.Web/hostingEnvironments, and Microsoft.Web/serverFarms.
+      actions      = lookup(delegation.value, "actions", null)                                     #(Optional) A list of Actions which should be delegated. This list is specific to the service to delegate to. Possible values include Microsoft.Network/networkinterfaces/*, Microsoft.Network/virtualNetworks/subnets/action, Microsoft.Network/virtualNetworks/subnets/join/action, Microsoft.Network/virtualNetworks/subnets/prepareNetworkPolicies/action and Microsoft.Network/virtualNetworks/subnets/unprepareNetworkPolicies/action.    
+    }
+  }
+
+  enforce_private_link_endpoint_network_policies = lookup(each.value, "enforce_private_link_endpoint_network_policies", null) #(Optional) Enable or Disable network policies for the private link endpoint on the subnet. Default value is false. Conflicts with enforce_private_link_service_network_policies.  
+  enforce_private_link_service_network_policies  = lookup(each.value, "enforce_private_link_service_network_policies", null)  #(Optional) Enable or Disable network policies for the private link service on the subnet. Default valule is false. Conflicts with enforce_private_link_endpoint_network_policies.  
+  service_endpoints                              = lookup(each.value, "service_endpoints", null)                              #(Optional) The list of Service endpoints to associate with the subnet. Possible values include: Microsoft.AzureActiveDirectory, Microsoft.AzureCosmosDB, Microsoft.ContainerRegistry, Microsoft.EventHub, Microsoft.KeyVault, Microsoft.ServiceBus, Microsoft.Sql, Microsoft.Storage and Microsoft.Web.  
+  service_endpoint_policy_ids                    = lookup(each.value, "service_endpoint_policy_ids", null)                    #(Optional) The list of IDs of Service Endpoint Policies to associate with the subnet.  
+}
+
+# -
+# - Route Tables
+# -
+resource "azurerm_route_table" "rt1" {
+  for_each            = var.route_tables
+  name                = "rt-${each.value["name"]}-${var.environment}"
+  location            = lookup(each.value, "location", null) == null ? data.azurerm_resource_group.rg.location : each.value["location"]
+  resource_group_name = data.azurerm_resource_group.rg.name
+
+  dynamic "route" {
+    for_each                 = lookup(each.value, "route", null)
+    content {
+      name                   = route.value["name"]                                                                            #(Required) The name of the route.
+      address_prefix         = route.value["address_prefix"]                                                                  #(Required) The destination CIDR to which the route applies, such as 10.1.0.0/16. Tags such as VirtualNetwork, AzureLoadBalancer or Internet can also be used.
+      next_hop_type          = route.value["next_hop_type"]                                                                   #(Required) The type of Azure hop the packet should be sent to. Possible values are VirtualNetworkGateway, VnetLocal, Internet, VirtualAppliance and None.
+      next_hop_in_ip_address = lookup(route.value, "next_hop_in_ip_address", null)                                            #(Optional) Contains the IP address packets should be forwarded to. Next hop values are only allowed in routes where the next hop type is VirtualAppliance.
+    }
+  }
+  
+  disable_bgp_route_propagation = lookup(each.value, "disable_bgp_route_propagation", null)                                   #(Optional) Boolean flag which controls propagation of routes learned by BGP on that route table. True means disable.
+
+}
+
+# -
+# - Route Table Association
+# -
+resource "azurerm_subnet_route_table_association" "rta1" {
+  for_each       = var.route_table_association
+  subnet_id      = lookup(azurerm_subnet.sub1, each.value["subnet_key"])["id"]
+  route_table_id = lookup(azurerm_route_table.rt1, each.value["route_table_key"])["id"]
+}
+
+
+# -
 # - Network Security Group
 # - 
 resource "azurerm_network_security_group" "nsg1" {
@@ -69,35 +165,10 @@ resource "azurerm_network_security_group" "nsg1" {
 }
 
 # -
-# - Virtual Network
-# -
-resource "azurerm_virtual_network" "vnet1" {
-  for_each            = var.virtual_networks
-  name                = "vnet-${each.value["name"]}-${var.environment}"                                                     #(Required) The name of the virtual network. Changing this forces a new resource to be created.
-  location            = lookup(each.value, "location", null) == null ? data.azurerm_resource_group.rg.location : each.value["location"]
-  resource_group_name = data.azurerm_resource_group.rg.name
-  
-  address_space       = each.value["address_space"]                                                                         #(Required) The address space that is used the virtual network. You can supply more than one address space.
-  bgp_community       = lookup(each.value, "bgp_community", null)                                                           #(Optional) The BGP community attribute in format <as-number>:<community-value>.
-  
-  dynamic "ddos_protection_plan" {                                                                                           #(Optional) A ddos_protection_plan block as documented below.
-    for_each = lookup(each.value, "ddos_protection_plan", var.null_array)
-    content {
-      id     = lookup(merge(data.azurerm_ddos_prtection_plan.dpp1,azurerm_ddos_prtection_plan.dpp1), ddos_protection_plan.value["ddos_protection_plan_key"])["id"] #(Required) The ID of DDoS Protection Plan.
-      enable = ddos_protection_plan.value["enable"]                                                                          #(Required) Enable/disable DDoS Protection Plan on Virtual Network.      
-    }
-  }
-  
-  dns_servers          = lookup(each.value, "dns_servers", null)                                                             #(Optional) List of IP addresses of DNS servers
-
-  dynamic "subnet" {                                                                                                         #(Optional) Can be specified multiple times to define multiple subnets. Each subnet block supports fields documented below.
-    for_each = lookup(each.value, "subnet", var.null_array)
-    content {
-      name           = subnet.value["name"]                                                                                  #(Required) The name of the subnet.
-      address_prefix = subnet.value["address_prefix"]                                                                        #(Required) The address prefix to use for the subnet.
-      security_group = lookup(subnet.value, "nsg_key", null) != null ? lookup(merge(data.azurerm_network_security_group.nsg1, azurerm_network_security_group.nsg1), subnet.value["nsg_key"])["id"] : null                                                         #(Optional) The Network Security Group to associate with the subnet. (Referenced by id, ie. azurerm_network_security_group.example.id)
-    }
-  }
-
-  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", []))
+# - Network Security Group Association
+# - 
+resource "azurerm_subnet_network_security_group_association" "nsga1" {
+  for_each                  = var.network_security_group_association
+  subnet_id                 = lookup(azurerm_subnet.sub1, each.value["subnet_key"])["id"]
+  network_security_group_id = lookup(azurerm_network_security_group.nsg1, each.value["nsg_key"])["id"] 
 }
