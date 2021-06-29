@@ -4,11 +4,11 @@
 
 # Lookup Resource Group
 data "azurerm_resource_group" "rg" {
-  name = var.networking_rg
+  name = var.network_rg
 }
 
 # Lookup existing DDoS Plans
-data "azurerm_ddos_prtection_plan" "dpp1" {
+data "azurerm_network_ddos_protection_plan" "dpp1" {
   for_each            = var.existing_ddos_protection_plans
   name                = each.value["name"] 
   resource_group_name = each.value["resource_group_name"]
@@ -24,13 +24,13 @@ data "azurerm_network_security_group" "nsg1" {
 # -
 # - DDoS Plan
 # -
-resource "azurerm_ddos_prtection_plan" "dpp1" {
+resource "azurerm_network_ddos_protection_plan" "dpp1" {
   for_each            = var.ddos_protection_plans
   name                = "dpp-${each.value["name"]}-${var.environment}"
-  location            = each.value["location"] == null ? data.azurerm_resource_group.rg.location : each.value["location"]
+  location            = lookup(each.value, "location", null) == null ? data.azurerm_resource_group.rg.location : each.value["location"]
   resource_group_name = data.azurerm_resource_group.rg.name
 
-  tags                = merge(data.azurerm_resource_group.rg.tags, lookup(each.value["tags"], null))
+  tags                = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", []))
 }
 
 # -
@@ -38,9 +38,11 @@ resource "azurerm_ddos_prtection_plan" "dpp1" {
 # - 
 resource "azurerm_network_security_group" "nsg1" {
   for_each            = var.network_security_groups
-  name                = "nsg-${each.value["name"]}-${var.environement}"                                                      #(Required) Specifies the name of the network security group. Changing this forces a new resource to be created.
-  location            = each.value["location"] == null ? data.azurerm_resource_group.rg.location : each.value["location"]
-  
+  name                = "nsg-${each.value["name"]}-${var.environment}"                                                      #(Required) Specifies the name of the network security group. Changing this forces a new resource to be created.
+  location            = lookup(each.value, "location", null) == null ? data.azurerm_resource_group.rg.location : each.value["location"]
+  resource_group_name = data.azurerm_resource_group.rg.name
+
+
   dynamic "security_rule" {
     for_each = lookup(each.value, "security_rule", null)
     content {
@@ -63,7 +65,7 @@ resource "azurerm_network_security_group" "nsg1" {
     }
   }
 
-  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value["tags"], null))
+  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", []))
 }
 
 # -
@@ -72,7 +74,7 @@ resource "azurerm_network_security_group" "nsg1" {
 resource "azurerm_virtual_network" "vnet1" {
   for_each            = var.virtual_networks
   name                = "vnet-${each.value["name"]}-${var.environment}"                                                     #(Required) The name of the virtual network. Changing this forces a new resource to be created.
-  location            = each.value["location"] == null ? data.azurerm_resource_group.rg.location : each.value["location"]
+  location            = lookup(each.value, "location", null) == null ? data.azurerm_resource_group.rg.location : each.value["location"]
   resource_group_name = data.azurerm_resource_group.rg.name
   
   address_space       = each.value["address_space"]                                                                         #(Required) The address space that is used the virtual network. You can supply more than one address space.
@@ -80,10 +82,11 @@ resource "azurerm_virtual_network" "vnet1" {
   
   dynamic "ddos_protection_plan" {                                                                                           #(Optional) A ddos_protection_plan block as documented below.
     for_each = lookup(each.value, "ddos_protection_plan", var.null_array)
-    contecnt {
+    content {
       id     = lookup(merge(data.azurerm_ddos_prtection_plan.dpp1,azurerm_ddos_prtection_plan.dpp1), ddos_protection_plan.value["ddos_protection_plan_key"])["id"] #(Required) The ID of DDoS Protection Plan.
       enable = ddos_protection_plan.value["enable"]                                                                          #(Required) Enable/disable DDoS Protection Plan on Virtual Network.      
     }
+  }
   
   dns_servers          = lookup(each.value, "dns_servers", null)                                                             #(Optional) List of IP addresses of DNS servers
 
@@ -92,8 +95,9 @@ resource "azurerm_virtual_network" "vnet1" {
     content {
       name           = subnet.value["name"]                                                                                  #(Required) The name of the subnet.
       address_prefix = subnet.value["address_prefix"]                                                                        #(Required) The address prefix to use for the subnet.
-      security_group = lookup(merge(data.azurerm_network_security_group.nsg1, azurerm_network_security_group.nsg1), subnet.value["nsg_key"])["id"]                                                          #(Optional) The Network Security Group to associate with the subnet. (Referenced by id, ie. azurerm_network_security_group.example.id)
+      security_group = lookup(subnet.value, "nsg_key", null) != null ? lookup(merge(data.azurerm_network_security_group.nsg1, azurerm_network_security_group.nsg1), subnet.value["nsg_key"])["id"] : null                                                         #(Optional) The Network Security Group to associate with the subnet. (Referenced by id, ie. azurerm_network_security_group.example.id)
+    }
   }
 
-  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", null))
+  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", []))
 }
