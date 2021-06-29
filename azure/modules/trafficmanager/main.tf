@@ -10,7 +10,7 @@ data "azurerm_resource_group" "rg" {
 # -
 resource "azurerm_traffic_manager_profile" "tm1" {
   for_each                       = var.traffic_manager_profiles
-  name                           = "tm-${each.value["name"]}-${var.environment}"    #(Required) The name of the Traffic Manager profile. Changing this forces a new resource to be created.
+  name                           = "${var.environment}-${each.value["team"]}-${each.value["name"]}-${each.value["instance"]}-atm"   #(Required) The name of the Traffic Manager profile. Changing this forces a new resource to be created.
   resource_group_name            = data.azurerm_resource_group.rg.name              #(Required) The name of the resource group in which to create the Traffic Manager profile.
   profile_status                 = lookup(each.value, "profile_status" , null)       #(Optional) The status of the profile, can be set to either Enabled or Disabled. Defaults to Enabled.
   traffic_routing_method         = each.value["traffic_routing_method"]             #(Required) Specifies the algorithm used to route traffic
@@ -48,7 +48,7 @@ resource "azurerm_traffic_manager_profile" "tm1" {
 # -
 resource "azurerm_traffic_manager_endpoint" "tmep1" {
   for_each                       = var.traffic_manager_endpoints                                               
-  name                           = "tmep-${each.value["name"]}-${each.value["priority"]}-${var.environment}"  #(Required) The name of the Traffic Manager endpoint. Changing this forces a new resource to be created.
+  name                           = "${var.environment}-${each.value["team"]}-${each.value["name"]}-${each.value["instance"]}-tmep"  #(Required) The name of the Traffic Manager endpoint. Changing this forces a new resource to be created.
   resource_group_name            = data.azurerm_resource_group.rg.name                                        #(Required) The name of the resource group where the Traffic Manager Profile exists.
   profile_name                   = lookup(azurerm_traffic_manager_profile.tm1, each.value["traffic_manager_profile_key"])["name"] #(Required) The name of the Traffic Manager Profile to attach create the Traffic Manager endpoint.
   endpoint_status                = lookup(each.value, "endpoint_status", null)                                #(Optional) The status of the Endpoint, can be set to either Enabled or Disabled. Defaults to Enabled.
