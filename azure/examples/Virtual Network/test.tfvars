@@ -26,10 +26,29 @@ ddos_protection_plans = {
 }
 
 # -
+# - Virtual Networks
+# -
+virtual_networks = {
+  vnet1 = {
+    name                     = "test"
+    address_space            = ["10.0.0.0/16"]
+    dns_servers              = ["10.0.0.4", "10.0.0.5"]
+
+    # DDoS Protection Plan
+    ddos_prtections_plan_key = "ddos1"
+    enabled                  = true
+
+    tags = {
+     "service" = "vnet"    
+    }     
+  }
+}
+
+# -
 # - Network Security Groups
 # -
 network_security_groups = {
-  nsg1 = {
+  nsg_1 = {
     name = "nsg1"
     security_rule = [
       {
@@ -51,35 +70,58 @@ network_security_groups = {
 }
 
 # -
-# - Virtual Networks
-# -
-virtual_networks = {
-  vnet1 = {
-    name                     = "test"
-    address_space            = ["10.0.0.0/16"]
-    dns_servers              = ["10.0.0.4", "10.0.0.5"]
-
-    # DDoS Protection Plan
-    ddos_prtections_plan_key = "ddos1"
-    enabled                  = true
-
-    subnet = {
-      subnet_1 = {
-        name                   = "subnet1"
-        address_prefix         = "10.0.1.0/24"
-      }
-      subnet_2 = {
-        name                   = "subnet2"
-        address_prefix         = "10.0.2.0/24"
-      }
-      subnet_3 = {
-        name                   = "subnet3"
-        address_prefix         = "10.0.3.0/24"
-        nsg_key                = "nsg1"
+# - Route Tables
+# - 
+route_tables = {
+  rt_1 = {
+    name = "rt1"
+    route = {
+      route_1 = {
+        name           = "route1"
+        address_prefix = "10.1.0.0/16"
+        next_hop_type  = "vnetlocal"
       }
     }
-    tags = {
-     "service" = "vnet"    
-    }     
+  }
+}
+
+# -
+# - Subnets
+# - 
+subnets = {
+  subnet_1 = {
+    name                   = "subnet1"
+    vnet_key               = "vnet1"
+    address_prefixes       = ["10.0.1.0/24"]
+  }
+  subnet_2 = {
+    name                   = "subnet2"
+    vnet_key               = "vnet1"
+    address_prefixes       = ["10.0.2.0/24"]
+  }
+  subnet_3 = {
+    name                   = "subnet3"
+    vnet_key               = "vnet1"
+    address_prefixes       = ["10.0.3.0/24"]
+  }
+}
+
+# -
+# - Route Table Association
+# - 
+route_table_association = {
+  rta1 = {
+    subnet_key      = "subnet_1"
+    route_table_key = "rt_1"
+  }
+}
+
+# -
+# - Network Security Group Association
+# - 
+network_security_group_association = {
+  nsga1 = {
+    subnet_key = "subnet_3"
+    nsg_key    = "nsg_1"
   }
 }
