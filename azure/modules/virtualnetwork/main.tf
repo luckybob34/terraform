@@ -56,15 +56,6 @@ resource "azurerm_virtual_network" "vnet1" {
   
   dns_servers          = lookup(each.value, "dns_servers", null)                                                             #(Optional) List of IP addresses of DNS servers
 
-  # dynamic "subnet" {                                                                                                         #(Optional) Can be specified multiple times to define multiple subnets. Each subnet block supports fields documented below.
-  #   for_each = lookup(each.value, "subnet", var.null_array)
-  #   content {
-  #     name           = subnet.value["name"]                                                                                  #(Required) The name of the subnet.
-  #     address_prefix = subnet.value["address_prefix"]                                                                        #(Required) The address prefix to use for the subnet.
-  #     security_group = lookup(subnet.value, "nsg_key", null) != null ? lookup(merge(data.azurerm_network_security_group.nsg1, azurerm_network_security_group.nsg1), subnet.value["nsg_key"])["id"] : null                                                         #(Optional) The Network Security Group to associate with the subnet. (Referenced by id, ie. azurerm_network_security_group.example.id)
-  #   }
-  # }
-
   tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", []))
 }
 
