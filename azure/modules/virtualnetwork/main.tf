@@ -47,7 +47,7 @@ resource "azurerm_virtual_network" "vnet1" {
   bgp_community       = lookup(each.value, "bgp_community", null)                                                           #(Optional) The BGP community attribute in format <as-number>:<community-value>.
   
   dynamic "ddos_protection_plan" {                                                                                          #(Optional) A ddos_protection_plan block as documented below.
-    for_each = lookup(each.value, "ddos_protection_plan"), [])
+    for_each = lookup(each.value, "ddos_protection_plan", [])
     content {
       id     = lookup(merge(data.azurerm_ddos_prtection_plan.dpp1,azurerm_ddos_prtection_plan.dpp1), ddos_protection_plan.value["ddos_protection_plan_key"])["id"] #(Required) The ID of DDoS Protection Plan.
       enable = ddos_protection_plan.value["enable"]                                                                           #(Required) Enable/disable DDoS Protection Plan on Virtual Network.      
