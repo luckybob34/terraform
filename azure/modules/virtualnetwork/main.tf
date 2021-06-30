@@ -46,11 +46,11 @@ resource "azurerm_virtual_network" "vnet1" {
   address_space       = each.value["address_space"]                                                                         #(Required) The address space that is used the virtual network. You can supply more than one address space.
   bgp_community       = lookup(each.value, "bgp_community", null)                                                           #(Optional) The BGP community attribute in format <as-number>:<community-value>.
   
-  dynamic "ddos_protection_plan" {                                                                                           #(Optional) A ddos_protection_plan block as documented below.
-    for_each = lookup(each.value, "ddos_protection_plan", var.null_array)
+  dynamic "ddos_protection_plan" {                                                                                          #(Optional) A ddos_protection_plan block as documented below.
+    for_each = lookup(each.value, "ddos_protection_plan"), [])
     content {
       id     = lookup(merge(data.azurerm_ddos_prtection_plan.dpp1,azurerm_ddos_prtection_plan.dpp1), ddos_protection_plan.value["ddos_protection_plan_key"])["id"] #(Required) The ID of DDoS Protection Plan.
-      enable = ddos_protection_plan.value["enable"]                                                                          #(Required) Enable/disable DDoS Protection Plan on Virtual Network.      
+      enable = ddos_protection_plan.value["enable"]                                                                           #(Required) Enable/disable DDoS Protection Plan on Virtual Network.      
     }
   }
   
@@ -76,8 +76,15 @@ resource "azurerm_subnet" "sub1" {
   dynamic "delegation" {                                                                           #(Optional) One or more delegation blocks as defined below.  
     for_each = lookup(each.value, "delegation", [])
     content {
-      name         = delegation.value["name"]                                                      #(Required) The name of service to delegate to. Possible values include Microsoft.ApiManagement/service, Microsoft.AzureCosmosDB/clusters, Microsoft.BareMetal/AzureVMware, Microsoft.BareMetal/CrayServers, Microsoft.Batch/batchAccounts, Microsoft.ContainerInstance/containerGroups, Microsoft.Databricks/workspaces, Microsoft.DBforMySQL/flexibleServers, Microsoft.DBforMySQL/serversv2, Microsoft.DBforPostgreSQL/flexibleServers, Microsoft.DBforPostgreSQL/serversv2, Microsoft.DBforPostgreSQL/singleServers, Microsoft.HardwareSecurityModules/dedicatedHSMs, Microsoft.Kusto/clusters, Microsoft.Logic/integrationServiceEnvironments, Microsoft.MachineLearningServices/workspaces, Microsoft.Netapp/volumes, Microsoft.Network/managedResolvers, Microsoft.PowerPlatform/vnetaccesslinks, Microsoft.ServiceFabricMesh/networks, Microsoft.Sql/managedInstances, Microsoft.Sql/servers, Microsoft.StreamAnalytics/streamingJobs, Microsoft.Synapse/workspaces, Microsoft.Web/hostingEnvironments, and Microsoft.Web/serverFarms.
-      actions      = lookup(delegation.value, "actions", null)                                     #(Optional) A list of Actions which should be delegated. This list is specific to the service to delegate to. Possible values include Microsoft.Network/networkinterfaces/*, Microsoft.Network/virtualNetworks/subnets/action, Microsoft.Network/virtualNetworks/subnets/join/action, Microsoft.Network/virtualNetworks/subnets/prepareNetworkPolicies/action and Microsoft.Network/virtualNetworks/subnets/unprepareNetworkPolicies/action.    
+      name         = delegation.value["name"]                                                      #(Required) A name for this delegation.
+
+      dynamic "service_delegation" {
+        for_each = delegation.value["service_delegation"]
+        content {
+          name         = delegation.value["name"]                                                  #(Required) The name of service to delegate to. Possible values include Microsoft.ApiManagement/service, Microsoft.AzureCosmosDB/clusters, Microsoft.BareMetal/AzureVMware, Microsoft.BareMetal/CrayServers, Microsoft.Batch/batchAccounts, Microsoft.ContainerInstance/containerGroups, Microsoft.Databricks/workspaces, Microsoft.DBforMySQL/flexibleServers, Microsoft.DBforMySQL/serversv2, Microsoft.DBforPostgreSQL/flexibleServers, Microsoft.DBforPostgreSQL/serversv2, Microsoft.DBforPostgreSQL/singleServers, Microsoft.HardwareSecurityModules/dedicatedHSMs, Microsoft.Kusto/clusters, Microsoft.Logic/integrationServiceEnvironments, Microsoft.MachineLearningServices/workspaces, Microsoft.Netapp/volumes, Microsoft.Network/managedResolvers, Microsoft.PowerPlatform/vnetaccesslinks, Microsoft.ServiceFabricMesh/networks, Microsoft.Sql/managedInstances, Microsoft.Sql/servers, Microsoft.StreamAnalytics/streamingJobs, Microsoft.Synapse/workspaces, Microsoft.Web/hostingEnvironments, and Microsoft.Web/serverFarms.
+          actions      = lookup(delegation.value, "actions", null)                                 #(Optional) A list of Actions which should be delegated. This list is specific to the service to delegate to. Possible values include Microsoft.Network/networkinterfaces/*, Microsoft.Network/virtualNetworks/subnets/action, Microsoft.Network/virtualNetworks/subnets/join/action, Microsoft.Network/virtualNetworks/subnets/prepareNetworkPolicies/action and Microsoft.Network/virtualNetworks/subnets/unprepareNetworkPolicies/action.    
+        }
+      }
     }
   }
 
