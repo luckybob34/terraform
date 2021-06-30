@@ -46,15 +46,12 @@ resource "azurerm_virtual_network" "vnet1" {
   address_space       = each.value["address_space"]                                                                         #(Required) The address space that is used the virtual network. You can supply more than one address space.
   bgp_community       = lookup(each.value, "bgp_community", null)                                                           #(Optional) The BGP community attribute in format <as-number>:<community-value>.
   
-  dynamic "ddos_protection_plan" {                                                                                          #(Optional) A ddos_protection_plan block as documented below.
-    for_each = lookup(each.value, "ddos_protection_plan", [])
-    content {
-      id     = lookup(merge(data.azurerm_network_ddos_protection_plan.dpp1,azurerm_network_ddos_protection_plan.dpp1), ddos_protection_plan.value["ddos_protection_plan_key"])["id"] #(Required) The ID of DDoS Protection Plan.
-      enable = ddos_protection_plan.value["enable"]                                                                           #(Required) Enable/disable DDoS Protection Plan on Virtual Network.      
-    }
+  ddos_protection_plan {                                                                                                    #(Optional) A ddos_protection_plan block as documented below.
+    id     = lookup(merge(data.azurerm_network_ddos_protection_plan.dpp1,azurerm_network_ddos_protection_plan.dpp1), each.value["ddos_protection_plan_key"])["id"] #(Required) The ID of DDoS Protection Plan.
+    enable = each.value["enable"]                                                                                           #(Required) Enable/disable DDoS Protection Plan on Virtual Network.      
   }
   
-  dns_servers          = lookup(each.value, "dns_servers", null)                                                             #(Optional) List of IP addresses of DNS servers
+  dns_servers          = lookup(each.value, "dns_servers", null)                                                            #(Optional) List of IP addresses of DNS servers
 
   tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", []))
 }
