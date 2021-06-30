@@ -22,7 +22,7 @@ output "network_security_groups" {
 
 output "subnets" {
   description = "Map output of the Subnets"
-  value       = { for k, b in azurerm_subnets.sub1 : k => b }
+  value       = { for k, b in azurerm_subnet.sub1 : k => b }
 }
 
 # -
