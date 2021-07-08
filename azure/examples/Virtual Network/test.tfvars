@@ -23,6 +23,13 @@ ddos_protection_plans = {
       "service" = "ddos"
     }    
   }
+  ddos2 = {
+    name = "main-ddos2-plan"
+    location = "Central US"
+    tags = {
+      "service" = "ddos"
+    }    
+  }  
 }
 
 # -
@@ -35,13 +42,35 @@ virtual_networks = {
     dns_servers              = ["10.0.0.4", "10.0.0.5"]
 
     # DDoS Protection Plan
-    ddos_prtections_plan_key = "ddos1"
-    enabled                  = true
+    ddos_protection_plan = {
+      ddos = {
+        ddos_protection_plan_key = "ddos1"
+        enable                   = true
+      }
+    }
 
     tags = {
      "service" = "vnet"    
     }     
-  }
+  }  
+  vnet2 = {
+    name                     = "test2"
+    location                 = "Central US"
+    address_space            = ["10.0.0.0/16"]
+    dns_servers              = ["10.0.0.4", "10.0.0.5"]
+
+    # DDoS Protection Plan
+    ddos_protection_plan = {
+      ddos = {
+        ddos_protection_plan_key = "ddos2"
+        enable                   = true
+      }
+    }
+
+    tags = {
+     "service" = "vnet"    
+    }     
+  }  
 }
 
 # -
@@ -67,6 +96,26 @@ network_security_groups = {
      "service" = "nsg"    
     } 
   }
+  nsg_2 = {
+    name = "nsg2"
+    location    = "Central US"
+    security_rule = [
+      {
+        name                       = "test123"
+        priority                   = 100
+        direction                  = "Inbound"
+        access                     = "Allow"
+        protocol                   = "Tcp"
+        source_port_range          = "*"
+        destination_port_range     = "*"
+        source_address_prefix      = "*"
+        destination_address_prefix = "*"        
+      }
+    ]
+    tags = {
+     "service" = "nsg"    
+    } 
+  }  
 }
 
 # -
@@ -80,9 +129,20 @@ route_tables = {
         name           = "route1"
         address_prefix = "10.1.0.0/16"
         next_hop_type  = "vnetlocal"
-      }
+      }     
     }
-  }
+  } 
+  rt_2 = {
+    name = "rt2"
+    location = "Central US"    
+    route = {
+      route_1 = {
+        name           = "route1"
+        address_prefix = "10.1.0.0/16"
+        next_hop_type  = "vnetlocal"
+      }     
+    }
+  }    
 }
 
 # -
@@ -104,6 +164,22 @@ subnets = {
     vnet_key               = "vnet1"
     address_prefixes       = ["10.0.3.0/24"]
   }
+  # Secondary
+  subnet_4 = {
+    name                   = "subnet1"
+    vnet_key               = "vnet2"
+    address_prefixes       = ["10.0.1.0/24"]
+  }
+  subnet_5 = {
+    name                   = "subnet2"
+    vnet_key               = "vnet2"
+    address_prefixes       = ["10.0.2.0/24"]
+  }
+  subnet_6 = {
+    name                   = "subnet3"
+    vnet_key               = "vnet2"
+    address_prefixes       = ["10.0.3.0/24"]
+  }  
 }
 
 # -
@@ -114,6 +190,10 @@ route_table_association = {
     subnet_key      = "subnet_1"
     route_table_key = "rt_1"
   }
+  rta2 = {
+    subnet_key      = "subnet_4"
+    route_table_key = "rt_2"
+  }  
 }
 
 # -
@@ -124,4 +204,8 @@ network_security_group_association = {
     subnet_key = "subnet_3"
     nsg_key    = "nsg_1"
   }
+  nsga2 = {
+    subnet_key = "subnet_6"
+    nsg_key    = "nsg_2"
+  }  
 }
