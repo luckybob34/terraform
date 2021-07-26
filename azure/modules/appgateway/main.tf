@@ -11,6 +11,13 @@ data "azurerm_virtual_network" "vnet1" {
   resource_group_name = lookup(each.value, "resource_group_name", data.azurerm_resource_group.rg.name)  
 }
 
+data "azurerm_subnet" "sub1" {
+  for_each             = var.existing_subnets
+  name                 = each.value["name"]
+  virtual_network_name = each.value["virtual_network_name"] 
+  resource_group_name  = lookup(each.value, "resource_group_name", data.azurerm_resource_group.rg.name)  
+}
+
 data "azurerm_public_ip" "pip1" {
   for_each            = var.existing_public_ips
   name                = each.value["name"]
@@ -18,52 +25,22 @@ data "azurerm_public_ip" "pip1" {
 }
 
 # -
-# - Virtual Network
-# -
-resource "azurerm_virtual_network" "vnet1" {
-  for_each             = var.virtual_networks
-  name                 = "vnet-${each.value["name"]}-${each.value["priority"]}-${var.environment}"                           #(Required) The name of the virtual network. Changing this forces a new resource to be created.
-  resource_group_name  = data.azurerm_resource_group.rg.name                                                                 #(Required) The name of the resource group in which to create the virtual network.
-  address_space        = each.value["address_space"]                                                                         #(Required) The address space that is used the virtual network. You can supply more than one address space.
-  location             = var.app_gateway_location                                                                            #(Required) The location/region where the virtual network is created. Changing this forces a new resource to be created.
-  bgp_community        = lookup(each.value, "bgp_community", null)                                                           #(Optional) The BGP community attribute in format <as-number>:<community-value>.
-  dynamic "ddos_protection_plan" {                                                                                           #(Optional) A ddos_protection_plan block as documented below.
-    for_each = lookup(each.value, "ddos_protection_plan", var.null_array)
-    contecnt {
-      id     = ddos_protection_plan.value["id"]                                                                              #(Required) The ID of DDoS Protection Plan.
-      enable = ddos_protection_plan.value["enable"]                                                                          #(Required) Enable/disable DDoS Protection Plan on Virtual Network.      
-    }
-  
-  dns_servers          = lookup(each.value, "dns_servers", null)                                                             #(Optional) List of IP addresses of DNS servers
-
-  dynamic "subnet" {                                                                                                         #(Optional) Can be specified multiple times to define multiple subnets. Each subnet block supports fields documented below.
-    for_each = lookup(each.value, "subnet", var.null_array)
-    content {
-      name           = subnet.value["name"]                                                                                  #(Required) The name of the subnet.
-      address_prefix = subnet.value["address_prefix"]                                                                        #(Required) The address prefix to use for the subnet.
-      security_group = lookup(subnet.value, "security_group", null)                                                          #(Optional) The Network Security Group to associate with the subnet. (Referenced by id, ie. azurerm_network_security_group.example.id)
-  }
-
-  tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", null))
-}
-
-# -
 # - Public IP
 # -
 resource "azurerm_public_ip" "pip1" {
   for_each                = var.public_ips
-  name                    = "vnet-${each.value["name"]}-${each.value["priority"]}-${var.environment}"  #(Required) Specifies the name of the Public IP resource . Changing this forces a new resource to be created.
-  resource_group_name     = data.azurerm_resource_group.rg.name                                        #(Required) The name of the resource group in which to create the public ip.
-  location                = var.app_gateway_location                                                   #(Required) Specifies the supported Azure location where the resource exists. Changing this forces a new resource to be created.
-  sku                     = lookup(each.value, "", null)                                               #(Optional) The SKU of the Public IP. Accepted values are Basic and Standard. Defaults to Basic.
-  allocation_method       = each.value["allocation_method"]                                            #(Required) Defines the allocation method for this IP address. Possible values are Static or Dynamic.
-  availability_zone       = lookup(each.value, "availability_zone", null)                              #(Optional) The availability zone to allocate the Public IP in. Possible values are Zone-Redundant, 1, 2, 3, and No-Zone. Defaults to Zone-Redundant.
-  ip_version              = lookup(each.value, "ip_version", null)                                     #(Optional) The IP Version to use, IPv6 or IPv4.
-  idle_timeout_in_minutes = lookup(each.value, "idle_timeout_in_minutes", null)                        #(Optional) Specifies the timeout for the TCP idle connection. The value can be set between 4 and 30 minutes.
-  domain_name_label       = lookup(each.value, "domain_name_label", null)                              #(Optional) Label for the Domain Name. Will be used to make up the FQDN. If a domain name label is specified, an A DNS record is created for the public IP in the Microsoft Azure DNS system.
-  reverse_fqdn            = lookup(each.value, "reverse_fqdn", null)                                   #(Optional) A fully qualified domain name that resolves to this public IP address. If the reverseFqdn is specified, then a PTR DNS record is created pointing from the IP address in the in-addr.arpa domain to the reverse FQDN.
-  public_ip_prefix_id     = lookup(each.value, "public_ip_prefix_id", null)                            #(Optional) If specified then public IP address allocated will be provided from the public IP prefix resource.
-  ip_tags                 = lookup(each.value, "ip_tags", null)                                        #(Optional) A mapping of IP tags to assign to the public IP.
+  name                    = "${var.environment}-${each.value["team"]}-${each.value["name"]}-${each.value["instance"]}-pip"                  #(Required) Specifies the name of the Public IP resource . Changing this forces a new resource to be created.
+  resource_group_name     = data.azurerm_resource_group.rg.name                                                                             #(Required) The name of the resource group in which to create the public ip.
+  location                = lookup(each.value, "location", null) == null ? data.azurerm_resource_group.rg.location : each.value["location"] #(Required) Specifies the supported Azure location where the resource exists. Changing this forces a new resource to be created.
+  sku                     = lookup(each.value, "sku", null)                                                                                    #(Optional) The SKU of the Public IP. Accepted values are Basic and Standard. Defaults to Basic.
+  allocation_method       = each.value["allocation_method"]                                                                                 #(Required) Defines the allocation method for this IP address. Possible values are Static or Dynamic.
+  availability_zone       = lookup(each.value, "availability_zone", null)                                                                   #(Optional) The availability zone to allocate the Public IP in. Possible values are Zone-Redundant, 1, 2, 3, and No-Zone. Defaults to Zone-Redundant.
+  ip_version              = lookup(each.value, "ip_version", null)                                                                          #(Optional) The IP Version to use, IPv6 or IPv4.
+  idle_timeout_in_minutes = lookup(each.value, "idle_timeout_in_minutes", null)                                                             #(Optional) Specifies the timeout for the TCP idle connection. The value can be set between 4 and 30 minutes.
+  domain_name_label       = lookup(each.value, "domain_name_label", null)                                                                   #(Optional) Label for the Domain Name. Will be used to make up the FQDN. If a domain name label is specified, an A DNS record is created for the public IP in the Microsoft Azure DNS system.
+  reverse_fqdn            = lookup(each.value, "reverse_fqdn", null)                                                                        #(Optional) A fully qualified domain name that resolves to this public IP address. If the reverseFqdn is specified, then a PTR DNS record is created pointing from the IP address in the in-addr.arpa domain to the reverse FQDN.
+  public_ip_prefix_id     = lookup(each.value, "public_ip_prefix_id", null)                                                                 #(Optional) If specified then public IP address allocated will be provided from the public IP prefix resource.
+  ip_tags                 = lookup(each.value, "ip_tags", null)                                                                             #(Optional) A mapping of IP tags to assign to the public IP.
   
   tags = merge(data.azurerm_resource_group.rg.tags, lookup(each.value, "tags", null))
 }
@@ -75,9 +52,9 @@ resource "azurerm_public_ip" "pip1" {
 
 resource "azurerm_application_gateway" "agw1" {
   for_each            = var.app_gateways
-  name                = "agw-${each.value["name"]}-${each.value["priority"]}-${var.environment}"
+  name                = "${var.environment}-${each.value["team"]}-${each.value["name"]}-${each.value["instance"]}-agw"
   resource_group_name = data.azurerm_resource_group.rg.name
-  location            = var.app_gateway_location
+  location            = lookup(each.value, "location", null) == null ? data.azurerm_resource_group.rg.location : each.value["location"]
 
   # - 
   # - Backend Address Pool
@@ -114,6 +91,7 @@ resource "azurerm_application_gateway" "agw1" {
           name = authentication_certificate.value["name"]                                                                    #(Required) The Name of the Authentication Certificate to use.
           data = authentication_certificate.value["data"]                                                                    #(Required) The contents of the Authentication Certificate which should be used.        
         }
+      }
  
       trusted_root_certificate_names = lookup(backend_http_settings.value, "trusted_root_certificate_names", null)           #(Optional) A list of trusted_root_certificate names.
 
@@ -122,7 +100,8 @@ resource "azurerm_application_gateway" "agw1" {
         content {
           enabled           = connection_draining.value["enabled"]                                                           #(Required) If connection draining is enabled or not.
           drain_timeout_sec = connection_draining.value["drain_timeout_sec"]                                                 #(Required) The number of seconds connection draining is active. Acceptable values are from 1 second to 3600 seconds.        
-        }      
+        }
+      }      
     }
   }
 
@@ -133,9 +112,9 @@ resource "azurerm_application_gateway" "agw1" {
     for_each = lookup(each.value, "frontend_ip_configuration", [])
     content {
       name                          = frontend_ip_configuration.value["name"]                                                #(Required) The name of the Frontend IP Configuration.
-      subnet_id                     = lookup(frontend_ip_configuration.value, "subnet_id", null)                             #(Optional) The ID of the Subnet.
+      subnet_id                     = lookup(frontend_ip_configuration.value, "subnet_id", null) != null ? lookup(data.azurerm_subnet.sub1, frontend_ip_configuration.value["subnet_key"])["id"] : null
       private_ip_address            = lookup(frontend_ip_configuration.value, "private_ip_address", null)                    #(Optional) The Private IP Address to use for the Application Gateway.
-      public_ip_address_id          = lookup(merge(azurerm_public_ip.pip1, data.azurerm_public_ip.pip1), each.value["public_ip_key"])["id"] #(Optional) The ID of a Public IP Address which the Application Gateway should use. The allocation method for the Public IP Address depends on the sku of this Application Gateway. Please refer to the Azure documentation for public IP addresses for details.
+      public_ip_address_id          = lookup(merge(azurerm_public_ip.pip1, data.azurerm_public_ip.pip1), frontend_ip_configuration.value["public_ip_key"])["id"] #(Optional) The ID of a Public IP Address which the Application Gateway should use. The allocation method for the Public IP Address depends on the sku of this Application Gateway. Please refer to the Azure documentation for public IP addresses for details.
       private_ip_address_allocation = lookup(frontend_ip_configuration.value, "private_ip_address_allocation", null)         #(Optional) The Allocation Method for the Private IP Address. Possible values are Dynamic and Static.      
     }
   }
@@ -158,7 +137,7 @@ resource "azurerm_application_gateway" "agw1" {
     for_each = lookup(each.value, "gateway_ip_configuration", [])
     content {
       name      = gateway_ip_configuration.value["name"]                                                                     #(Required) The Name of this Gateway IP Configuration.
-      subnet_id = lookup(merge(azurerm_virtual_network.vnet1, data.azurerm_virtual_network.vnet1), each.value["vnet_key"])["subnet"]["subnet_key"]["id"] #(Required) The ID of the Subnet which the Application Gateway should be connected to.      
+      subnet_id = lookup(data.azurerm_subnet.sub1, gateway_ip_configuration.value["subnet_key"])["id"]                      #(Required) The ID of the Subnet which the Application Gateway should be connected to.      
     }
   }
 
@@ -176,7 +155,14 @@ resource "azurerm_application_gateway" "agw1" {
       protocol                       = http_listener.value["protocol"]                                                       #(Required) The Protocol to use for this HTTP Listener. Possible values are Http and Https.
       require_sni                    = lookup(http_listener.value, "require_sni", null)                                      #(Optional) Should Server Name Indication be Required? Defaults to false.
       ssl_certificate_name           = lookup(http_listener.value, "ssl_certificate_name", null)                             #(Optional) The name of the associated SSL Certificate which should be used for this HTTP Listener.
-      custom_error_configuration     = lookup(http_listener.value, "custom_error_configuration", null)                       #(Optional) One or more custom_error_configuration blocks as defined below.
+
+      dynamic "custom_error_configuration" {                                                                                    #(Optional) One or more custom_error_configuration blocks
+        for_each = lookup(http_listener.value, "custom_error_configuration", var.null_array)
+        content {
+          status_code           = custom_error_configuration.value["status_code"]                                               #(Required) Status code of the application gateway customer error. Possible values are HttpStatus403 and HttpStatus502
+          custom_error_page_url = custom_error_configuration.value["custom_error_page_url"]                                     #(Required) Error page URL of the application gateway customer error.      
+        }
+      }
       firewall_policy_id             = lookup(http_listener.value, "firewall_policy_id", null)                               #(Optional) The ID of the Web Application Firewall Policy which should be used as a HTTP Listener.
     }
   }
@@ -217,11 +203,11 @@ resource "azurerm_application_gateway" "agw1" {
     content {
       name     = sku.value["name"]                                                                                          #(Required) The Name of the SKU to use for this Application Gateway. Possible values are Standard_Small, Standard_Medium, Standard_Large, Standard_v2, WAF_Medium, WAF_Large, and WAF_v2.
       tier     = sku.value["tier"]                                                                                          #(Required) The Tier of the SKU to use for this Application Gateway. Possible values are Standard, Standard_v2, WAF and WAF_v2.
-      capacity = sku.value["capacity"]                                                                                      #(Required) The Capacity of the SKU to use for this Application Gateway. When using a V1 SKU this value must be between 1 and 32, and 1 to 125 for a V2 SKU. This property is optional if autoscale_configuration is set.      
+      capacity = lookup(sku.value, "capacity", null)                                                                        #(Required) The Capacity of the SKU to use for this Application Gateway. When using a V1 SKU this value must be between 1 and 32, and 1 to 125 for a V2 SKU. This property is optional if autoscale_configuration is set.      
     }
   }
 
-zones = lookup(each.value, "zones", null)                                                                                   #(Optional) A collection of availability zones to spread the Application Gateway over.
+  zones = lookup(each.value, "zones", null)                                                                                   #(Optional) A collection of availability zones to spread the Application Gateway over.
 
   # - 
   # - Authentication Certificate
@@ -259,7 +245,7 @@ zones = lookup(each.value, "zones", null)                                       
     }
   }
 
-enable_http2 = lookup(each.value, "enable_http2", null)                                                                     #(Optional) Is HTTP2 enabled on the application gateway resource? Defaults to false.
+  enable_http2 = lookup(each.value, "enable_http2", null)                                                                     #(Optional) Is HTTP2 enabled on the application gateway resource? Defaults to false.
 
   # - 
   # - Probe
@@ -273,10 +259,16 @@ enable_http2 = lookup(each.value, "enable_http2", null)                         
       protocol                                  = probe.value["protocol"]                                                   #(Required) The Protocol used for this Probe. Possible values are Http and Https.
       path                                      = probe.value["path"]                                                       #(Required) The Path used for this Probe.
       timeout                                   = probe.value["timeout"]                                                    #(Required) The Timeout used for this Probe, which indicates when a probe becomes unhealthy. Possible values range from 1 second to a maximum of 86,400 seconds.
-      unhealthy_threshold                       = probe.value["unhealthy"]                                                  #(Required) The Unhealthy Threshold for this Probe, which indicates the amount of retries which should be attempted before a node is deemed unhealthy. Possible values are from 1 - 20 seconds.
+      unhealthy_threshold                       = probe.value["unhealthy_threshold"]                                        #(Required) The Unhealthy Threshold for this Probe, which indicates the amount of retries which should be attempted before a node is deemed unhealthy. Possible values are from 1 - 20 seconds.
       port                                      = lookup(probe.value, "port", null)                                         #(Optional) Custom port which will be used for probing the backend servers. The valid value ranges from 1 to 65535. In case not set, port from http settings will be used. This property is valid for Standard_v2 and WAF_v2 only.
       pick_host_name_from_backend_http_settings = lookup(probe.value, "pick_host_name_from_backend_http_settings", null)    #(Optional) Whether the host header should be picked from the backend http settings. Defaults to false.
-      match                                     = lookup(probe.value, "match", null)                                        #(Optional) A match block as defined above.
+      dynamic "match" {                                                                                                     #(Optional) A match block as defined above.
+        for_each = lookup(probe.value, "match", var.null_array)
+        content {
+          body        = lookup(match.value, "body", null)                                                                   #(Optional) A snippet from the Response Body which must be present in the Response..
+          status_code = lookup(match.value, "statusCodes", null)                                                            #(Optional) A list of allowed status codes for this Health Probe.          
+        }
+      }
       minimum_servers                           = lookup(probe.value, "minimum_servers", null)                              #(Optional) The minimum number of servers that are always marked as healthy. Defaults to 0.      
     }
   }
@@ -307,15 +299,16 @@ enable_http2 = lookup(each.value, "enable_http2", null)                         
       default_rewrite_rule_set_name       = lookup(url_path_map.value, "default_rewrite_rule_set_name", null)               #(Optional) The Name of the Default Rewrite Rule Set which should be used for this URL Path Map. Only valid for v2 SKUs.
 
       dynamic "path_rule" {                                                                                                 #(Required) One or more path_rule blocks
-      for_each = lookup(each.value, "path_rule", [])
-      content {      
-        name                        = path_rule.value["name"]                                                               #(Required) The Name of the Path Rule.
-        paths                       = path_rule.value["paths"]                                                              #(Required) A list of Paths used in this Path Rule.
-        backend_address_pool_name   = lookup(path_rule.value, "backend_address_pool_name", null)                            #(Optional) The Name of the Backend Address Pool to use for this Path Rule. Cannot be set if redirect_configuration_name is set.
-        backend_http_settings_name  = lookup(path_rule.value, "backend_http_settings_name", null)                           #(Optional) The Name of the Backend HTTP Settings Collection to use for this Path Rule. Cannot be set if redirect_configuration_name is set.
-        redirect_configuration_name = lookup(path_rule.value, "redirect_configuration_name", null)                          #(Optional) The Name of a Redirect Configuration to use for this Path Rule. Cannot be set if backend_address_pool_name or backend_http_settings_name is set.
-        rewrite_rule_set_name       = lookup(path_rule.value, "rewrite_rule_set_name", null)                                #(Optional) The Name of the Rewrite Rule Set which should be used for this URL Path Map. Only valid for v2 SKUs.
-        firewall_policy_id          = lookup(path_rule.value, "firewall_policy_id", null)                                   #(Optional) The ID of the Web Application Firewall Policy which should be used as a HTTP Listener.      
+        for_each = lookup(url_path_map.value, "path_rule", var.null_array)
+        content {      
+          name                        = path_rule.value["name"]                                                               #(Required) The Name of the Path Rule.
+          paths                       = path_rule.value["paths"]                                                              #(Required) A list of Paths used in this Path Rule.
+          backend_address_pool_name   = lookup(path_rule.value, "backend_address_pool_name", null)                            #(Optional) The Name of the Backend Address Pool to use for this Path Rule. Cannot be set if redirect_configuration_name is set.
+          backend_http_settings_name  = lookup(path_rule.value, "backend_http_settings_name", null)                           #(Optional) The Name of the Backend HTTP Settings Collection to use for this Path Rule. Cannot be set if redirect_configuration_name is set.
+          redirect_configuration_name = lookup(path_rule.value, "redirect_configuration_name", null)                          #(Optional) The Name of a Redirect Configuration to use for this Path Rule. Cannot be set if backend_address_pool_name or backend_http_settings_name is set.
+          rewrite_rule_set_name       = lookup(path_rule.value, "rewrite_rule_set_name", null)                                #(Optional) The Name of the Rewrite Rule Set which should be used for this URL Path Map. Only valid for v2 SKUs.
+          firewall_policy_id          = lookup(path_rule.value, "firewall_policy_id", null)                                   #(Optional) The ID of the Web Application Firewall Policy which should be used as a HTTP Listener.      
+        }
       }
     }
   }
@@ -332,23 +325,25 @@ enable_http2 = lookup(each.value, "enable_http2", null)                         
       rule_set_version = waf_configuration.value["rule_set_version"]                                                        #(Required) The Version of the Rule Set used for this Web Application Firewall. Possible values are 2.2.9, 3.0, and 3.1.
       
       dynamic "disabled_rule_group" {                                                                                       #(Optional) one or more disabled_rule_group blocks
-      for_each = lookup(each.value, "disabled_rule_group", var.null_array)
-      contect {
-        rule_group_name = disabled_rule_group.value["rule_group_name"]                                                      #(Required) The rule group where specific rules should be disabled. Accepted values are: crs_20_protocol_violations, crs_21_protocol_anomalies, crs_23_request_limits, crs_30_http_policy, crs_35_bad_robots, crs_40_generic_attacks, crs_41_sql_injection_attacks, crs_41_xss_attacks, crs_42_tight_security, crs_45_trojans, General, REQUEST-911-METHOD-ENFORCEMENT, REQUEST-913-SCANNER-DETECTION, REQUEST-920-PROTOCOL-ENFORCEMENT, REQUEST-921-PROTOCOL-ATTACK, REQUEST-930-APPLICATION-ATTACK-LFI, REQUEST-931-APPLICATION-ATTACK-RFI, REQUEST-932-APPLICATION-ATTACK-RCE, REQUEST-933-APPLICATION-ATTACK-PHP, REQUEST-941-APPLICATION-ATTACK-XSS, REQUEST-942-APPLICATION-ATTACK-SQLI, REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION
-        rules           = lookup(disabled_rule_group.value, "rules", null)                                                  #(Optional) A list of rules which should be disabled in that group. Disables all rules in the specified group if rules is not specified.        
-      }  
+        for_each = lookup(each.value, "disabled_rule_group", var.null_array)
+        contect {
+          rule_group_name = disabled_rule_group.value["rule_group_name"]                                                      #(Required) The rule group where specific rules should be disabled. Accepted values are: crs_20_protocol_violations, crs_21_protocol_anomalies, crs_23_request_limits, crs_30_http_policy, crs_35_bad_robots, crs_40_generic_attacks, crs_41_sql_injection_attacks, crs_41_xss_attacks, crs_42_tight_security, crs_45_trojans, General, REQUEST-911-METHOD-ENFORCEMENT, REQUEST-913-SCANNER-DETECTION, REQUEST-920-PROTOCOL-ENFORCEMENT, REQUEST-921-PROTOCOL-ATTACK, REQUEST-930-APPLICATION-ATTACK-LFI, REQUEST-931-APPLICATION-ATTACK-RFI, REQUEST-932-APPLICATION-ATTACK-RCE, REQUEST-933-APPLICATION-ATTACK-PHP, REQUEST-941-APPLICATION-ATTACK-XSS, REQUEST-942-APPLICATION-ATTACK-SQLI, REQUEST-943-APPLICATION-ATTACK-SESSION-FIXATION
+          rules           = lookup(disabled_rule_group.value, "rules", null)                                                  #(Optional) A list of rules which should be disabled in that group. Disables all rules in the specified group if rules is not specified.        
+        }  
+      }
 
       file_upload_limit_mb     = lookup(waf_configuration.value, "file_upload_limit_mb", null)                              #(Optional) The File Upload Limit in MB. Accepted values are in the range 1MB to 750MB for the WAF_v2 SKU, and 1MB to 500MB for all other SKUs. Defaults to 100MB.
       request_body_check       = lookup(waf_configuration.value, "request_body_check", null)                                #(Optional) Is Request Body Inspection enabled? Defaults to true.
       max_request_body_size_kb = lookup(waf_configuration.value, "max_request_body_size_kb", null)                          #(Optional) The Maximum Request Body Size in KB. Accepted values are in the range 1KB to 128KB. Defaults to 128KB.
       
       dynamic "exclusion" {                                                                                                 #(Optional) one or more exclusion blocks      
-      for_each = lookup(each.value, "exclusion", var.null_array)
-      contect {
-        match_variable          = exclusion.value["match_variable"]                                                         #(Required) Match variable of the exclusion rule to exclude header, cookie or GET arguments. Possible values are RequestHeaderNames, RequestArgNames and RequestCookieNames
-        selector_match_operator = lookup(exclusion.value, "selector_match_operator", null)                                  #(Optional) Operator which will be used to search in the variable content. Possible values are Equals, StartsWith, EndsWith, Contains. If empty will exclude all traffic on this match_variable
-        selector                = lookup(exclusion.value, "selector", null)                                                 #(Optional) String value which will be used for the filter operation. If empty will exclude all traffic on this match_variable
-      }  
+        for_each = lookup(each.value, "exclusion", var.null_array)
+        contect {
+          match_variable          = exclusion.value["match_variable"]                                                         #(Required) Match variable of the exclusion rule to exclude header, cookie or GET arguments. Possible values are RequestHeaderNames, RequestArgNames and RequestCookieNames
+          selector_match_operator = lookup(exclusion.value, "selector_match_operator", null)                                  #(Optional) Operator which will be used to search in the variable content. Possible values are Equals, StartsWith, EndsWith, Contains. If empty will exclude all traffic on this match_variable
+          selector                = lookup(exclusion.value, "selector", null)                                                 #(Optional) String value which will be used for the filter operation. If empty will exclude all traffic on this match_variable
+        }  
+      }
     }
   }
 
@@ -363,7 +358,7 @@ enable_http2 = lookup(each.value, "enable_http2", null)                         
     }
   }
 
-firewall_policy_id = lookup(each.value, "firewall_policy_id", null)                                                         #(Optional) The ID of the Web Application Firewall Policy.
+  firewall_policy_id = lookup(each.value, "firewall_policy_id", null)                                                         #(Optional) The ID of the Web Application Firewall Policy.
 
   # - 
   # - Redirect Configuration
@@ -398,7 +393,49 @@ firewall_policy_id = lookup(each.value, "firewall_policy_id", null)             
     for_each = lookup(each.value, "rewrite_rule_set", var.null_array)
     content {
       name         = rewrite_rule_set.value["name"]                                                                         #(Required) Unique name of the rewrite rule set block
-      rewrite_rule = rewrite_rule_set.value["rewrite_rule"]                                                                 #(Required) One or more rewrite_rule blocks as defined above.      
+      
+      dynamic "rewrite_rule" {                                                                                              #(Required) One or more rewrite_rule blocks as defined above.      
+        for_each = lookup(rewrite_rule_set, "rewrite_rule", var.null_array)
+        content {
+          name          = rewrite_rule.value["name"]
+          rule_sequence = rewrite_rule.value["rule_sequence"]
+
+          dynamic "condition" {
+            for_each = lookup(rewrite_rule.value, "condition", var.null_array)
+            content {
+              variable    = condition.value["variable"]                                                                     #(Required) The variable of the condition.
+              pattern     = condition.value["pattern"]                                                                      #(Required) The pattern, either fixed string or regular expression, that evaluates the truthfulness of the condition.
+              ignore_case = lookup(condition.value, "ignore_case", null)                                                    #(Optional) Perform a case in-sensitive comparison. Defaults to false
+              negate      = lookup(condition.value, "negate", null)                                                         #(Optional) Negate the result of the condition evaluation. Defaults to false
+            }
+          }
+
+          dynamic "request_header_configuration" {
+            for_each = lookup(rewrite_rule.value, "request_header_configuration", var.null_array)
+            content {
+              header_name  = request_header_configuration.value["header_name"]                                              #(Required) Header name of the header configuration.
+              header_value = request_header_configuration.value["header_value"]                                             #(Required) Header value of the header configuration. To delete a request header set this property to an empty string.
+            }
+          }
+
+          dynamic "response_header_configuration" {
+            for_each = lookup(rewrite_rule.value, "response_header_configuration", var.null_array)
+            content {
+              header_name  = response_header_configuration.value["header_name"]                                              #(Required) Header name of the header configuration.
+              header_value = response_header_configuration.value["header_value"]                                             #(Required) Header value of the header configuration. To delete a request header set this property to an empty string.
+            }
+          }    
+
+          dynamic "url" {
+            for_each = lookup(rewrite_rule.value, "url", var.null_array)
+            content {
+              path         = lookup(url.value, "path", null)                                                                #(Optional) The URL path to rewrite.
+              query_string = lookup(url.value, "query_string", null)                                                        #(Optional) The query string to rewrite.  
+              reroute      = lookup(url.value, "reroute", null) 
+            }                                                              
+          }                  
+        }
+      }
     }
   }
 
