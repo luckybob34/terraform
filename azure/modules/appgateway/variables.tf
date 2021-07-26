@@ -24,13 +24,23 @@ variable "app_gateways" {
   type        = any
 }
 
-variable "virtual_netowrks" {
-  description = "The Virtual Networks with their properties."
+variable "public_ips" {
+  description = "The Public Ips with their properties."
   type        = any
 }
 
-variable "public_ips" {
-  description = "The Public Ips with their properties."
+variable "existing_public_ips" {
+  description = "The existing Public Ips"
+  type        = any
+}
+
+variable "existing_virtual_networks" {
+  description = "The Existing Virtual networks"
+  type        = any
+}
+
+variable "existing_subnets" {
+  description = "The existing Subnets"
   type        = any
 }
 
