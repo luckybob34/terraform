@@ -1,13 +1,9 @@
-# -
-# - Core object
-# -
+// -
+// - General
+// -
+
 variable "cosmosdb_rg" {
   description = "The CosmosDB resources group name."
-  type        = string
-}
-
-variable "cosmosdb_location" {
-  description = "The CosmosDB location"
   type        = string
 }
 
@@ -15,9 +11,24 @@ variable "environment" {
   description = "Current environment"
   type        = string
 }
-# -
-# - Main resources
-# -
+
+
+// -
+// - Load Existing Resources
+// -
+variable "subnets" {
+  description = "The Subnets with their properties."
+  type        = any
+}
+
+variable "log_analytics_workspace" {
+  description = "The Log Analytics Workspaces with their properties."
+  type        = any
+}
+
+// -
+// - Resources
+// -
 variable "cosmosdb_accounts" {
   description = "The CosmosDB Accounts with their properties."
   type        = any
@@ -33,9 +44,22 @@ variable "cosmosdb_sql_containers" {
   type        = any
 }
 
-# -
-# - Other
-# -
+variable "private_endpoints" {
+  description = "The Private Endpoints with their properties."
+  type        = any
+}
+
+// -
+// - Logging
+// -
+variable "monitor_diagnostic_settings" {
+  description = "The Monitor Diagnostic Settings with their properties."
+  type        = any
+}
+
+// -
+// - Other
+// -
 variable "null_array" {
   description = ""
   default     = []
